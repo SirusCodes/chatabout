@@ -1,7 +1,12 @@
-from langchain.tools import tool
+from typing import TypedDict
+from langchain.tools import tool, ToolRuntime
 from pydantic import BaseModel, Field
 
 from ai.store import RESUME, get_vector_store
+
+
+class Context(TypedDict):
+    admin_name: str
 
 
 class ResumeDataTool(BaseModel):
@@ -11,7 +16,9 @@ class ResumeDataTool(BaseModel):
 
 
 @tool(args_schema=ResumeDataTool, response_format="content_and_artifact")
-def get_data_from_resume(query: str):
+def get_data_from_resume(query: str, runtime: ToolRuntime[Context]):
+    runtime.stream_writer("Getting data from resume...")
+
     store = get_vector_store(collection_name=RESUME)
     results = store.similarity_search(query, k=5)
     content = "\n\n".join([doc.page_content for doc in results])

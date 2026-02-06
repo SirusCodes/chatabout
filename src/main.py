@@ -1,18 +1,12 @@
-# from fastapi import FastAPI
-
-# app = FastAPI()
-
-
-# @app.get("/health")
-# def health_check():
-#     return {"status": "ok"}
-
 from ai.agents import get_agent
 from ai.doc_manager import store_pdf_doc
 from ai.store import RESUME
 
 import getpass
 import os
+import dotenv
+
+dotenv.load_dotenv()
 
 if "GOOGLE_API_KEY" not in os.environ:
     os.environ["GOOGLE_API_KEY"] = getpass.getpass("Enter your Google AI API key: ")
@@ -25,14 +19,17 @@ def main():
     )
     print(doc_ids)
 
-    agent = get_agent(admin_name="Darshan Rander")
+    agent = get_agent()
 
     query = "What are Darshan's skills in backend development?"
-    for event in agent.stream(
+    for mode, chunk in agent.stream(
         {"messages": [{"role": "user", "content": query}]},
-        stream_mode="values",
+        stream_mode=["updates", "custom"],
+        context={"admin_name": "Darshan Rander"},
     ):
-        event["messages"][-1].pretty_print()
+        print(f"stream_mode: {mode}")
+        print(f"content: {chunk}")
+        print("\n")
 
 
 if __name__ == "__main__":
