@@ -25,7 +25,7 @@ def system_prompt(request: ModelRequest) -> str:
 
 def get_agent():
 
-    chat_model = init_chat_model("google_genai:gemini-3-flash-preview")
+    chat_model = init_chat_model("google_genai:gemini-2.5-flash", temperature=0.7)
 
     agent = create_agent(
         model=chat_model,

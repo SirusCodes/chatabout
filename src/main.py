@@ -1,5 +1,5 @@
 from ai.agents import get_agent
-from ai.doc_manager import store_pdf_doc
+from ai.doc_manager import store_pdf_doc, store_website
 from ai.store import RESUME
 
 import getpass
@@ -17,19 +17,23 @@ def main():
     doc_ids = store_pdf_doc(
         "./resume-darshan-rander.pdf", collection_name, data_id="resume"
     )
+    doc_ids = store_website("https://blog.darshanrander.com/", data_id="blog")
     print(doc_ids)
 
     agent = get_agent()
 
-    query = "What are Darshan's skills in backend development?"
-    for mode, chunk in agent.stream(
+    query = "Give summary of his blog posts and try to find any interesting insights about his experience and skills."
+    for events in agent.stream(
         {"messages": [{"role": "user", "content": query}]},
-        stream_mode=["updates", "custom"],
-        context={"admin_name": "Darshan Rander"},
+        stream_mode="values",
+        context={
+            "admin_name": "Darshan Rander",
+            "blog": "https://blog.darshanrander.com",
+            "portfolio": "https://darshanrander.com",
+        },
+        config={"configurable": {"thread_id": "test_thread"}},
     ):
-        print(f"stream_mode: {mode}")
-        print(f"content: {chunk}")
-        print("\n")
+        events["messages"][-1].pretty_print()
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 
 RESUME = "resume"
+WEBSITE = "website"
 
 
 def get_vector_store(collection_name: str) -> Chroma:
