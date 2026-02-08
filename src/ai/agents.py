@@ -50,7 +50,7 @@ class ChatCache(AgentMiddleware):
         query = last_message.content
         # Check if the same query has been asked before
         results = self.vector_store.similarity_search_with_relevance_scores(query, k=1)
-        if not results or results[0][1] < 0.6:  # Use cache only if similarity is high
+        if not results or results[0][1] < 0.7:  # Use cache only if similarity is high
             print("Cache miss.", results)
             return
 
