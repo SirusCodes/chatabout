@@ -15,17 +15,19 @@ ChatAbout is a conversational AI application that:
 ## ✨ Key Features
 
 - **Vector-Based Retrieval**: Uses Chroma vector database for semantic document search
-- **Persistent Conversations**: Maintains conversation threads with full history
+- **Persistent Conversations**: Maintains conversation threads with full history using Postgres
 - **Tool-Integrated Agents**: LangChain agents with tool calling capabilities
 - **Streaming Responses**: Real-time chat streaming for responsive UI
 
 ## 📋 Prerequisites
 
 - Python 3.13 or higher
+- Postgres database (for conversation persistence)
 - API keys for:
   - Google Generative AI (`GOOGLE_API_KEY`)
   - Cloudflare Workers AI (`CF_ACCOUNT_ID`, `CF_AI_API_TOKEN`)
   - Chroma Vector Database (`CHROMA_API_KEY`, `CHROMA_TENANT`, `CHROMA_DATABASE`)
+- Admin credentials for authentication (`ADMIN_NAME`, `ADMIN_PASSWORD`)
 
 ## 🚀 Setup
 
@@ -39,25 +41,7 @@ uv sync
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the root directory with:
-
-```env
-# Google AI
-GOOGLE_API_KEY=your_google_api_key_here
-
-# Cloudflare Workers AI
-CF_ACCOUNT_ID=your_cloudflare_account_id
-CF_AI_API_TOKEN=your_cloudflare_token
-
-# Chroma Vector Database
-CHROMA_API_KEY=your_chroma_api_key
-CHROMA_TENANT=your_chroma_tenant
-CHROMA_DATABASE=your_chroma_database
-
-# Admin Credentials
-ADMIN_NAME=Your Name
-ADMIN_PASSWORD=your_secure_password
-```
+Create a `.env` file in the root directory with from .env.example and fill in your API keys and credentials.
 
 ### 3. Run the Server
 
@@ -97,7 +81,7 @@ Send a message and get a streaming response.
 ```json
 {
   "thread_id": "unique-thread-id",
-  "message": "Tell me about the admin's experience"
+  "prompt": "Tell me about the admin's experience"
 }
 ```
 
@@ -105,9 +89,7 @@ Send a message and get a streaming response.
 
 ### Document Management
 
-- **POST** `/store-portfolio` - Upload portfolio information
-- **POST** `/store-blog` - Upload blog content
-- **POST** `/store-pdf` - Upload PDF documents
+- **POST** `/upload` - Upload resume (PDF URL), portfolio URL, and blog URL
 
 ## 🛠️ Technologies Used
 
@@ -131,7 +113,7 @@ response = requests.post(
     "http://localhost:8000/chat",
     json={
         "thread_id": thread_id,
-        "message": "What are their main skills?"
+        "prompt": "What are their main skills?"
     },
     stream=True
 )

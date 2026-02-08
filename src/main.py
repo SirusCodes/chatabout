@@ -33,6 +33,7 @@ required_env_vars = [
     "CHROMA_API_KEY",
     "CHROMA_TENANT",
     "CHROMA_DATABASE",
+    "POSTGRES_URL",
 ]
 for var in required_env_vars:
     if var not in os.environ:
@@ -133,9 +134,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global agent instance
-_agent = None
-
 
 def get_chat_responses():
     """Generate OpenAPI responses for chat endpoint"""
@@ -191,14 +189,6 @@ def get_chat_responses():
     }
 
 
-def get_agent_instance():
-    """Get or initialize the agent"""
-    global _agent
-    if _agent is None:
-        _agent = get_agent()
-    return _agent
-
-
 async def stream_chat_events(
     thread_id: str,
     prompt: str,
@@ -212,79 +202,82 @@ async def stream_chat_events(
     - Cache status
     - LLM action information
     """
-    agent = get_agent_instance()
-
     try:
         # Stream events from the agent
         admin_name = os.environ["ADMIN_NAME"]
-        async for event in agent.astream(
-            {"messages": [HumanMessage(content=prompt)]},
-            stream_mode="values",
-            context={
-                "admin_name": admin_name,
-                "user_id": user_id,
-            },
-            config={"configurable": {"thread_id": thread_id}},
-        ):
-            # Extract the last message from the event
-            if "messages" in event and event["messages"]:
-                message: AnyMessage = event["messages"][-1]
+        with get_agent() as agent:
+            async for event in agent.astream(
+                {"messages": [HumanMessage(content=prompt)]},
+                stream_mode="values",
+                context={
+                    "admin_name": admin_name,
+                    "user_id": user_id,
+                },
+                config={"configurable": {"thread_id": thread_id}},
+            ):
+                # Extract the last message from the event
+                if "messages" in event and event["messages"]:
+                    message: AnyMessage = event["messages"][-1]
 
-                # Determine action based on message type and content
-                message_type = get_message_type(message)
-                action: ActionType | None = None
-                tool_name: str | None = None
-                if isinstance(message, AIMessage):
-                    if message.tool_calls:
-                        action = "calling_tool"
-                        # Extract tool names from tool calls
-                        tool_names = [
-                            tc.get("name", tc.get("tool", "unknown"))
-                            for tc in message.tool_calls
-                        ]
-                        tool_name = ", ".join(tool_names) if tool_names else None
+                    # Determine action based on message type and content
+                    message_type = get_message_type(message)
+                    action: ActionType | None = None
+                    tool_name: str | None = None
+                    if isinstance(message, AIMessage):
+                        if message.tool_calls:
+                            action = "calling_tool"
+                            # Extract tool names from tool calls
+                            tool_names = [
+                                tc.get("name", tc.get("tool", "unknown"))
+                                for tc in message.tool_calls
+                            ]
+                            tool_name = ", ".join(tool_names) if tool_names else None
+                        else:
+                            action = "generating"
+                    elif isinstance(message, HumanMessage):
+                        action = "received_prompt"
                     else:
-                        action = "generating"
-                elif isinstance(message, HumanMessage):
-                    action = "received_prompt"
-                else:
-                    action = "processing"
+                        action = "processing"
 
-                # Extract token usage information
-                tokens = None
-                if hasattr(message, "usage_metadata") and message.usage_metadata:
-                    tokens = TokenCount(
-                        input_tokens=message.usage_metadata.get("input_tokens"),
-                        output_tokens=message.usage_metadata.get("output_tokens"),
-                        total_tokens=(
-                            (
-                                message.usage_metadata.get("input_tokens", 0)
-                                + message.usage_metadata.get("output_tokens", 0)
-                            )
-                            if message.usage_metadata.get("input_tokens")
-                            and message.usage_metadata.get("output_tokens")
-                            else None
+                    # Extract token usage information
+                    tokens = None
+                    if hasattr(message, "usage_metadata") and message.usage_metadata:
+                        tokens = TokenCount(
+                            input_tokens=message.usage_metadata.get("input_tokens"),
+                            output_tokens=message.usage_metadata.get("output_tokens"),
+                            total_tokens=(
+                                (
+                                    message.usage_metadata.get("input_tokens", 0)
+                                    + message.usage_metadata.get("output_tokens", 0)
+                                )
+                                if message.usage_metadata.get("input_tokens")
+                                and message.usage_metadata.get("output_tokens")
+                                else None
+                            ),
+                        )
+
+                    # Check if response is from cache
+                    is_cached = False
+                    if hasattr(message, "metadata") and isinstance(
+                        message.metadata, dict
+                    ):
+                        is_cached = message.metadata.get("cached", False)
+
+                    # Prepare the event data
+                    event_data = {
+                        "thread_id": thread_id,
+                        "type": message_type,
+                        "content": message.content.strip(),
+                        "tokens": (
+                            tokens.model_dump(exclude_none=True) if tokens else None
                         ),
-                    )
+                        "is_cached": is_cached,
+                        "action": action,
+                        "tool_name": tool_name,
+                    }
 
-                # Check if response is from cache
-                is_cached = False
-                if hasattr(message, "metadata") and isinstance(message.metadata, dict):
-                    is_cached = message.metadata.get("cached", False)
-
-                # Prepare the event data
-                event_data = {
-                    "thread_id": thread_id,
-                    "type": message_type,
-                    "content": message.content.strip(),
-                    "tokens": tokens.model_dump(exclude_none=True) if tokens else None,
-                    "is_cached": is_cached,
-                    "action": action,
-                    "tool_name": tool_name,
-                }
-
-                # Yield as SSE formatted data
-                yield f"data: {json.dumps(event_data)}\n\n"
+                    # Yield as SSE formatted data
+                    yield f"data: {json.dumps(event_data)}\n\n"
 
         # Send completion event
         yield f"data: {json.dumps({'thread_id': thread_id, 'type': 'complete', 'content': '', 'action': 'complete'})}\n\n"

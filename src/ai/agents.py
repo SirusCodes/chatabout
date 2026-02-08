@@ -1,4 +1,6 @@
 import json
+import os
+from contextlib import contextmanager
 from typing import Any
 from langchain_cloudflare import ChatCloudflareWorkersAI
 from langchain_core.messages import HumanMessage, AIMessage
@@ -13,7 +15,7 @@ from langchain.agents.middleware import (
     SummarizationMiddleware,
 )
 from langchain_core.documents import Document
-from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.checkpoint.postgres import PostgresSaver
 from langchain_core.vectorstores import VectorStore
 
 
@@ -104,25 +106,32 @@ class ChatCache(AgentMiddleware):
         self.vector_store.add_documents([doc])
 
 
+@contextmanager
 def get_agent():
-
     chat_model = ChatCloudflareWorkersAI(
         model_name="@cf/qwen/qwen3-30b-a3b-fp8", temperature=0.7
     )
 
-    agent = create_agent(
-        model=chat_model,
-        tools=tools.get_all(),
-        context_schema=tools.Context,
-        middleware=[
-            system_prompt,
-            ToolCallLimitMiddleware(thread_limit=20, run_limit=3),
-            ChatCache(get_vector_store(collection_name="chat_cache")),
-            SummarizationMiddleware(
-                model=init_chat_model("google_genai:gemma-3-27b-it", temperature=0.7),
-                trigger=("tokens", 4000),
-            ),
-        ],
-        checkpointer=InMemorySaver(),
-    )
-    return agent
+    with PostgresSaver.from_conn_string(
+        os.getenv("POSTGRES_URL")
+    ) as checkpointer:
+        checkpointer.setup()
+        agent = create_agent(
+            model=chat_model,
+            tools=tools.get_all(),
+            context_schema=tools.Context,
+            middleware=[
+                system_prompt,
+                ToolCallLimitMiddleware(thread_limit=20, run_limit=3),
+                ChatCache(get_vector_store(collection_name="chat_cache")),
+                SummarizationMiddleware(
+                    model=init_chat_model(
+                        "google_genai:gemma-3-27b-it", temperature=0.7
+                    ),
+                    trigger=("tokens", 4000),
+                ),
+            ],
+            checkpointer=checkpointer,
+        )
+
+        yield agent
