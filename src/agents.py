@@ -19,8 +19,8 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langchain_core.vectorstores import VectorStore
 
 
-from ai import tools
-from ai.store import get_vector_store
+from . import tools
+from src.store import get_vector_store
 
 
 @dynamic_prompt

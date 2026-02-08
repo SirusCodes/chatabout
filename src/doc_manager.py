@@ -7,7 +7,7 @@ from langchain_text_splitters import (
 from bs4 import BeautifulSoup, Tag
 import requests
 
-from ai.store import get_vector_store
+from src.store import get_vector_store
 
 
 def clear_documents_with_data_id(data_id: str, user_id: str) -> None:

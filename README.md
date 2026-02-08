@@ -45,8 +45,17 @@ Create a `.env` file in the root directory with from .env.example and fill in yo
 
 ### 3. Run the Server
 
+#### Local Development
+
 ```bash
-uv run src/main.py
+uv run main
+```
+
+#### Docker
+
+```bash
+docker build -t chatabout .
+docker run --env-file .env -p 8000:8000 chatabout
 ```
 
 The API will start on `http://localhost:8000`
@@ -55,15 +64,21 @@ The API will start on `http://localhost:8000`
 
 ```
 chatabout/
+├── main.py                  # FastAPI application and endpoints
 ├── src/
-│   ├── main.py              # FastAPI application and endpoints
-│   ├── ai/
-│   │   ├── agents.py        # LangChain agent configuration
-│   │   ├── tools.py         # Tool definitions for agents
-│   │   ├── doc_manager.py   # Document storage and management
-│   │   └── store.py         # Vector store initialization
-│   └── __init__.py
+│   ├── __init__.py
+│   └── ai/
+│       ├── __init__.py
+│       ├── agents.py        # LangChain agent configuration
+│       ├── tools.py         # Tool definitions for agents
+│       ├── doc_manager.py   # Document storage and management
+│       └── store.py         # Vector store initialization
+├── Dockerfile               # Docker container configuration
+├── .dockerignore             # Docker build ignore file
+├── .env.example             # Example environment variables
 ├── pyproject.toml           # Project dependencies and metadata
+├── requirements.txt         # Pip dependencies (for Docker)
+├── uv.lock                  # Locked dependencies (uv)
 ├── README.md                # This file
 └── LICENCE                  # Project license
 ```

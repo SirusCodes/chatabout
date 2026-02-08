@@ -2,7 +2,7 @@ from typing import TypedDict
 from langchain.tools import tool, ToolRuntime
 from pydantic import BaseModel, Field
 
-from ai.store import get_vector_store
+from src.store import get_vector_store
 
 
 class Context(TypedDict):

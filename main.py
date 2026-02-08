@@ -1,6 +1,5 @@
 import json
 import os
-import uuid
 from typing import AsyncGenerator, Literal
 
 import dotenv
@@ -16,8 +15,8 @@ from langchain_core.messages import (
     ToolMessage,
 )
 
-from ai.agents import get_agent
-from ai.doc_manager import (
+from src.agents import get_agent
+from src.doc_manager import (
     clear_documents_with_data_id,
     store_portfolio,
     store_blog,
@@ -426,8 +425,9 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        app,
+        "main:app",
         host="0.0.0.0",
         port=8000,
         log_level="info",
+        reload=True,
     )
