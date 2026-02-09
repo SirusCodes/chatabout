@@ -56,7 +56,7 @@ class ChatCache(AgentMiddleware):
             print("Cache miss.", results)
             return
 
-        print(f"Cache hit! Similarity score: {results[0][1]}")
+        print(f"Cache hit! Similarity score: {results[0][1]}", results[0][0].metadata)
         cached_response_json = results[0][0].metadata.get("response")
         if not cached_response_json:
             return
@@ -70,8 +70,9 @@ class ChatCache(AgentMiddleware):
             print(f"Failed to deserialize cached response: {e}")
             return
 
+        messages.append(cached_message)
         return {
-            "messages": [cached_message],
+            "messages": messages,
             "jump_to": "end",
         }
 
