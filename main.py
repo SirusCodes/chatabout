@@ -38,6 +38,7 @@ required_env_vars = [
     "CHROMA_TENANT",
     "CHROMA_DATABASE",
     "POSTGRES_URL",
+    "SYSTEM_PROMPT_PATH",
 ]
 for var in required_env_vars:
     if var not in os.environ:
